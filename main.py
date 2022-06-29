@@ -5,6 +5,8 @@ import pandas as pd
 import yfinance as yf
 from sqlalchemy import create_engine
 
+from configparser import ConfigParser
+
 ############################
 #web scraping
 ############################
@@ -37,7 +39,17 @@ company = [n.replace('\n', '') for n in company]
 # connection MySQL
 ############################
 
-create_connection = 'mysql+pymysql://root@localhost:3306/sp&500'
+file = 'config.ini'
+config = ConfigParser()
+config.read(file)
+
+USER_BASE = config['database']['user']
+PASSWORD_BASE = config['database']['passw']
+DATABASE = config['database']['db']
+PORT = config['database']['port']
+HOST = config['database']['host']
+
+create_connection = f'postgresql+psycopg2://{USER_BASE}:{PASSWORD_BASE}@{HOST}:{PORT}/{DATABASE}'
 
 for tck in ticker:
     df = yf.download(tck, start='2000-01-01', end='2021-12-31')
