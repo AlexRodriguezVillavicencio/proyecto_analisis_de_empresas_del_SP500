@@ -1,1 +1,6 @@
 config.ini
+abbv.csv
+abmd.csv
+mmm.csv
+sp500.csv
+__pycache__
