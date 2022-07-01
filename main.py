@@ -1,44 +1,31 @@
-from bs4 import BeautifulSoup
-from urllib.request import Request, urlopen
 import pandas as pd
+import numpy as np
 
 import yfinance as yf
-from sqlalchemy import create_engine
+from utils import roi_anual, scraping_url, scraping_column
+from utils import retorno_gap, retorno_intra, descarga_datos
+from utils import dataframe_export_gi
 
+from sqlalchemy import create_engine
 from configparser import ConfigParser
 
-############################
-#web scraping
-############################
 
 site = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-header = {'User-Agent': 'Mozilla/5.0'}
-req = Request(site,headers=header)
-page = urlopen(req)
-soup = BeautifulSoup(page, "lxml")
-table = soup.find('table', id="constituents")
+table = scraping_url(site)
 
 #column "TICKER"
-tickers = []
-for row in table.findAll('tr')[1:]:
-    ticker = row.findAll('td')[0].get_text()
-    tickers.append(ticker)
-
-ticker = [n.replace('\n','').replace('.','-') for n in tickers]
-
+ticker = scraping_column(0)
 #column "COMPANY"
-company = []
-for row in table.findAll('tr')[1:]:
-    name = row.findAll('td')[1].get_text()
-    company.append(name)
-
-company = [n.replace('\n', '') for n in company]
+company = scraping_column(1)
+#column "SECTOR"
+sector = scraping_column(3)
+#column "INDUSTRY"
+industry = scraping_column(4)
 
 
 ############################
 # connection MySQL
 ############################
-
 file = 'config.ini'
 config = ConfigParser()
 config.read(file)
@@ -50,24 +37,92 @@ PORT = config['database']['port']
 HOST = config['database']['host']
 
 create_connection = f'postgresql+psycopg2://{USER_BASE}:{PASSWORD_BASE}@{HOST}:{PORT}/{DATABASE}'
+connection = create_engine(create_connection)
 
+############################
+# table roi_anual
+############################
+diccionario = {}
 for tck in ticker:
     df = yf.download(tck, start='2000-01-01', end='2021-12-31')
     df.reset_index(inplace=True)
-    name_tck = tck.lower()
-    connection = create_engine(create_connection)
-    try:
-        df.to_sql(name=name_tck,con=connection, index=False)
-    except:
-        print(f'la tabla {tck} ya existe')
+    lista = np.arange(2000,2022)
+    roi = roi_anual(lista,df)
+    diccionario[tck] = roi[0]
+
+clave = list(diccionario.keys())
+valor = list(diccionario.values())
+for i in range(len(clave)):
+    nuevo = [0]*(22 - len(valor[i]))
+    diccionario[clave[i]] = nuevo + valor[i]
+
+dfp = pd.DataFrame(diccionario, columns= clave)
+dfp['AÑO'] = lista
+
+try:
+    dfp.to_sql(name='roi_anual',con=connection, index=False)
+except:
+    print("la tabla ya existe")
 
 
 ############################
-# DataFrame
+# table sp500
 ############################
-
 df_SP = pd.DataFrame()
 df_SP['TICKER'] = ticker
 df_SP['COMPANY'] = company
-connc = create_engine(create_connection)
-df_SP.to_sql(name='sp500',con=connc, index=False)
+df_SP['SECTOR'] = sector
+df_SP['INDUSTRY'] = industry
+
+try:
+    df_SP.to_sql(name='sp500',con=connection, index=False)
+except:
+    print("la tabla ya existe")
+
+
+############################
+# table gap
+############################
+Gap = []
+Dayg = []
+for gap in ticker:
+    df = descarga_datos(gap)
+    if df.shape[0] != 0:
+        df.reset_index(inplace=True, drop=True)
+        max_dayg = retorno_gap(df)
+        Gap.append(gap)
+        Dayg.append(max_dayg)
+
+exportGi = dataframe_export_gi(Gap,Dayg)
+df_gap = pd.DataFrame
+df_gap['SEMANA'] = exportGi.index
+df_gap['NGAP'] = exportGi.values
+
+try:
+    df_gap.to_sql(name='gap',con=connection, index=False)
+except:
+    print("la tabla ya existe")
+
+
+############################
+# table intra
+############################
+Intra = []
+Dayi = []
+for intra in ticker:
+    df = descarga_datos(intra)
+    if df.shape[0] != 0:
+        df.reset_index(inplace=True, drop=True)
+        max_dayi = retorno_intra(df)
+        Intra.append(intra)
+        Dayi.append(max_dayi)
+
+exportGi = dataframe_export_gi(Intra,Dayi)
+df_intra = pd.DataFrame
+df_intra['SEMANA'] = exportGi.index
+df_intra['NINTRA'] = exportGi.values
+
+try:
+    df_intra.to_sql(name='intra',con=connection, index=False)
+except:
+    print("la tabla ya existe")
