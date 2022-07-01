@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 
-import yfinance as yf
 from utils import roi_anual, scraping_url, scraping_column
 from utils import retorno_gap, retorno_intra, descarga_datos
 from utils import dataframe_export_gi
@@ -14,13 +13,13 @@ site = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 table = scraping_url(site)
 
 #column "TICKER"
-ticker = scraping_column(0)
+ticker = scraping_column(table,0)
 #column "COMPANY"
-company = scraping_column(1)
+company = scraping_column(table,1)
 #column "SECTOR"
-sector = scraping_column(3)
+sector = scraping_column(table,3)
 #column "INDUSTRY"
-industry = scraping_column(4)
+industry = scraping_column(table,4)
 
 
 ############################
@@ -44,11 +43,12 @@ connection = create_engine(create_connection)
 ############################
 diccionario = {}
 for tck in ticker:
-    df = yf.download(tck, start='2000-01-01', end='2021-12-31')
-    df.reset_index(inplace=True)
-    lista = np.arange(2000,2022)
-    roi = roi_anual(lista,df)
-    diccionario[tck] = roi[0]
+    df = descarga_datos(tck)
+    if df.shape[0] != 0:
+        df.reset_index(inplace=True)
+        lista = np.arange(2000,2022)
+        roi = roi_anual(lista,df)
+        diccionario[tck] = roi[0]
 
 clave = list(diccionario.keys())
 valor = list(diccionario.values())
@@ -85,16 +85,16 @@ except:
 ############################
 Gap = []
 Dayg = []
-for gap in ticker:
-    df = descarga_datos(gap)
+for tck in ticker:
+    df = descarga_datos(tck)
     if df.shape[0] != 0:
-        df.reset_index(inplace=True, drop=True)
+        df.reset_index(inplace=True)
         max_dayg = retorno_gap(df)
-        Gap.append(gap)
+        Gap.append(tck)
         Dayg.append(max_dayg)
 
 exportGi = dataframe_export_gi(Gap,Dayg)
-df_gap = pd.DataFrame
+df_gap = pd.DataFrame()
 df_gap['SEMANA'] = exportGi.index
 df_gap['NGAP'] = exportGi.values
 
@@ -112,15 +112,15 @@ Dayi = []
 for intra in ticker:
     df = descarga_datos(intra)
     if df.shape[0] != 0:
-        df.reset_index(inplace=True, drop=True)
+        df.reset_index(inplace=True)
         max_dayi = retorno_intra(df)
         Intra.append(intra)
         Dayi.append(max_dayi)
 
-exportGi = dataframe_export_gi(Intra,Dayi)
-df_intra = pd.DataFrame
-df_intra['SEMANA'] = exportGi.index
-df_intra['NINTRA'] = exportGi.values
+exportIn = dataframe_export_gi(Intra,Dayi)
+df_intra = pd.DataFrame()
+df_intra['SEMANA'] = exportIn.index
+df_intra['NINTRA'] = exportIn.values
 
 try:
     df_intra.to_sql(name='intra',con=connection, index=False)
