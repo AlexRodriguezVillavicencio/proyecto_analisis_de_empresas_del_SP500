@@ -58,9 +58,18 @@ for i in range(len(clave)):
 
 dfp = pd.DataFrame(diccionario, columns= clave)
 dfp['AÑO'] = lista
+first_column = dfp.pop('AÑO')
+dfp.insert(0,'AÑO',first_column)
+dft = dfp.transpose()
+dft.reset_index(inplace=True)
+dft.rename(columns={'index':'TICKER',0:'2000',1:'2001',2:'2002',3:'2003',4:'2004',
+                    5:'2005',6:'2006',7:'2007',8:'2008',9:'2009',10:'2010',11:'2011',
+                    12:'2012',13:'2013',14:'2014',15:'2015',16:'2016',17:'2017',18:'2018',
+                    19:'2019',20:'2020',21:'2021'}, inplace=True)
+dft.drop(dft.index[0],inplace=True)
 
 try:
-    dfp.to_sql(name='roi_anual',con=connection, index=False)
+    dft.to_sql(name='roi_anual',con=connection, index=False)
 except:
     print("la tabla ya existe")
 
