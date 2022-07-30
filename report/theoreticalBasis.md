@@ -1,5 +1,8 @@
 # Análisis Fundamental
 
+![hola](../report/img/valorYprecio.jpg)
+
+
 ## Previos
 <div>
 <p1 style="color: red">Analisis fundamental</p1>
