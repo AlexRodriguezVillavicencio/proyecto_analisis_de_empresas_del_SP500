@@ -4,15 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-import yfinance as yf
-from bs4 import BeautifulSoup
-from urllib.request import Request, urlopen
-
-def descarga_datos(tck):
-    df = yf.download(tck, start='2000-01-01', end='2021-12-31')
-    return df
-
-def retorno_gap(df):
+def trading_gap(df):
     m = pd.to_datetime(df['Date'])
     day =m.dt.day_name()
     df['Day'] = day
@@ -23,7 +15,7 @@ def retorno_gap(df):
     maxDay = max_day[valor].index[0]
     return maxDay
 
-def retorno_intra(df):
+def trading_intra(df):
     m = pd.to_datetime(df['Date'])
     day =m.dt.day_name()
     df['Day'] = day
@@ -46,26 +38,10 @@ def plot_gi(x,y, text:str):
     plt.title(text)
     def addlabels(x,y):
         for i in range(len(x)):
-            plt.text(i, y[i]//2, y[i], ha = 'center', fontsize=15, bbox=dict(color='black', alpha=0.1),color='white')
+            plt.text(i, y[i]//2, y[i], ha = 'center', fontsize=15, bbox=dict(color='black', alpha=0.7),color='white')
     addlabels(x, y)
     sns.barplot(x=x,y=y)
     return plt.show()
-
-def scraping_url(site:str):    
-    header = {'User-Agent': 'Mozilla/5.0'}
-    req = Request(site,headers=header)
-    page = urlopen(req)
-    soup = BeautifulSoup(page, "lxml")
-    table = soup.find('table', id="constituents")
-    return table
-
-def scraping_column(table, col:int) -> list:
-    tickers = []
-    for row in table.findAll('tr')[1:]:
-        ticker = row.findAll('td')[col].get_text()
-        tickers.append(ticker)
-    ticker = [n.replace('\n','').replace('.','-') for n in tickers]
-    return ticker
 
 def roi_anual(lista, df):
     Roi = []
